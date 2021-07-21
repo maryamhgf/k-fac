@@ -6,6 +6,7 @@ from skimage import io
 import pandas as pd
 import numpy as np
 import os
+from PIL import Image
 
 # fixing HTTPS issue on Colab
 from six.moves import urllib
@@ -38,14 +39,19 @@ class MiniImageNetDataset(Dataset):
                                 self.landmarks_frame.iloc[idx, 0])
         image = io.imread(img_name)
         landmarks = self.landmarks_frame.iloc[idx, 1:]
+        image = Image.fromarray(image)
         #landmarks = np.array([landmarks])
         #landmarks = landmarks.astype('float').reshape(-1, 2)
-        sample = {'image': image, 'landmarks': landmarks}
+        target = self.landmarks_frame.iloc[idx, 0][0:9]
+        sample = image, self.landmarks_frame.iloc[idx, 0][0:9]
 
-        if self.transform:
-            sample = self.transform(sample)
+        if self.transform is not None:
+            image = self.transform(image)
 
-        return sample
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return image, target
 
 def get_transforms(dataset):
     transform_train = None
