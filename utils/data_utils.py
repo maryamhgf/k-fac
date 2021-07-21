@@ -1,6 +1,11 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
+from torch.utils.data import Dataset
+from skimage import io
+import pandas as pd
+import numpy as np
+import os
 
 # fixing HTTPS issue on Colab
 from six.moves import urllib
@@ -9,9 +14,59 @@ opener.addheaders = [('User-agent', 'Mozilla/5.0')]
 urllib.request.install_opener(opener)
 
 
+class MiniImageNetDataset(Dataset):
+    def __init__(self, csv_file, root_dir, transform=None):
+        """
+        Args:
+            csv_file (string): Path to the csv file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        self.landmarks_frame = pd.read_csv(csv_file)
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.landmarks_frame)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_name = os.path.join(self.root_dir,
+                                self.landmarks_frame.iloc[idx, 0])
+        image = io.imread(img_name)
+        landmarks = self.landmarks_frame.iloc[idx, 1:]
+        landmarks = np.array([landmarks])
+        landmarks = landmarks.astype('float').reshape(-1, 2)
+        sample = {'image': image, 'landmarks': landmarks}
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
+
 def get_transforms(dataset):
     transform_train = None
     transform_test = None
+
+    if dataset == 'imagenet':
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])        
+        transform_test = transforms.Compose([
+            transforms.RandomCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        ])    
+
     if dataset == 'cifar10':
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -62,9 +117,17 @@ def get_transforms(dataset):
     return transform_train, transform_test
 
 
-def get_dataloader(dataset, train_batch_size, test_batch_size, num_workers=2, root='../data'):
+def get_dataloader(dataset, train_batch_size, test_batch_size, num_workers=2, root='../data', csv_dir=None):
     transform_train, transform_test = get_transforms(dataset)
     trainset, testset = None, None
+    if dataset == 'imagenet':
+        train_mini_imagnet = pd.read_csv(csv_dir+'/train.cv')
+        test_mini_imagnet = pd.read_csv(csv_dir+'/test.cv')
+        trainset = MiniImageNetDataset(csv_file=csv_dir+'/train.cv',
+                                    root_dir='data/faces/', transform=transform_train)
+        testset = MiniImageNetDataset(csv_file=csv_dir+'/test.cv',
+                                    root_dir='data/faces/', transform=transform_test)
+    
     if dataset == 'cifar10':
         trainset = torchvision.datasets.CIFAR10(root=root, train=True, download=True, transform=transform_train)
         testset = torchvision.datasets.CIFAR10(root=root, train=False, download=True, transform=transform_test)
