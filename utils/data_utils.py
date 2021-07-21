@@ -24,9 +24,12 @@ class MiniImageNetDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
+        tags_names = pd.read_csv('/content/gdrive/MyDrive/TenGrad/mini_imagenet_class_label_dict3.txt', sep=" ", header=None)
+        tags_names.columns = ["label", "number", "name"]
         self.landmarks_frame = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
+        self.tags_names = tags_names
 
     def __len__(self):
         return len(self.landmarks_frame)
@@ -44,7 +47,7 @@ class MiniImageNetDataset(Dataset):
         #landmarks = landmarks.astype('float').reshape(-1, 2)
         target = self.landmarks_frame.iloc[idx, 0][0:9]
         sample = image, self.landmarks_frame.iloc[idx, 0][0:9]
-
+        target = int(self.tags_names[self.tags_names['label'] == target]["number"])
         if self.transform is not None:
             image = self.transform(image)
 
