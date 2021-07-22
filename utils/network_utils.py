@@ -1,7 +1,8 @@
 from models.cifar import (alexnet, densenet, resnet,
                           vgg16_bn, vgg19_bn, vgg16, vgg13,
-                          wrn, inception, googlenet, xception, nasnet, resnext, mobilenetv2)
+                          wrn, inception, googlenet, xception, nasnet, mobilenetv2)
 from models.mnist import (fc, convnet, bn, toy, autoencoder)
+from models.imagenet import (resnext)
 
 
 def get_network(network, **kwargs):
