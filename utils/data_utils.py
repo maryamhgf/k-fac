@@ -51,8 +51,6 @@ class MiniImageNetDataset(Dataset):
         if self.transform is not None:
             image = self.transform(image)
 
-        if self.transform is not None:
-            target = self.transform(target)
 
         return image, target
 
