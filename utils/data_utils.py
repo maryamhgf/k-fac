@@ -47,10 +47,9 @@ class MiniImageNetDataset(Dataset):
         #landmarks = landmarks.astype('float').reshape(-1, 2)
         target = self.landmarks_frame.iloc[idx, 0][0:9]
         sample = image, self.landmarks_frame.iloc[idx, 0][0:9]
-        target = int(self.tags_names[self.tags_names['label'] == target]["number"])
+        target = int(self.tags_names[self.tags_names['label'] == target]["number"]) - 1
         if self.transform is not None:
             image = self.transform(image)
-
 
         return image, target
 
