@@ -3,6 +3,10 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 from skimage import io
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
 import pandas as pd
 import numpy as np
 import os
@@ -127,12 +131,18 @@ def get_dataloader(dataset, train_batch_size, test_batch_size, num_workers=2, ro
     transform_train, transform_test = get_transforms(dataset)
     trainset, testset = None, None
     if dataset == 'imagenet':
+        '''
         train_mini_imagnet = pd.read_csv(csv_dir+'/train.csv')
         test_mini_imagnet = pd.read_csv(csv_dir+'/test.csv')
         trainset = MiniImageNetDataset(csv_file=csv_dir+'/train.csv',
                                     root_dir='/content/gdrive/MyDrive/mini-imagenet/train', transform=transform_train)
         testset = MiniImageNetDataset(csv_file=csv_dir+'/test.csv',
                                     root_dir='/content/gdrive/MyDrive/mini-imagenet/test', transform=transform_test)
+        '''
+        train_dir = csv_dir + '/train'
+        trainset = datasets.ImageFolder(train_dir, transform=transforms.ToTensor())
+        test_dir = csv_dir + '/val'
+        testset = datasets.ImageFolder(test_dir, transform=transforms.ToTensor())
     
     if dataset == 'cifar10':
         trainset = torchvision.datasets.CIFAR10(root=root, train=True, download=True, transform=transform_train)
