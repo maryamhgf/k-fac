@@ -38,6 +38,7 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
         self.features = features
         self.classifier = nn.Sequential(
+            nn.Flatten(start_dim=1),
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
@@ -51,7 +52,7 @@ class VGG(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), -1)
+        x = self.avgpool(x)
         x = self.classifier(x)
         return x
 
