@@ -106,7 +106,7 @@ nc = {
     'cifar100': 100,
     'mnist':10,
     'fashion-mnist': 10,
-    'imagenet': 64
+    'imagenet': 200
 }
 num_classes = nc[args.dataset]
 net = get_network(args.network,
