@@ -1,6 +1,7 @@
 '''Train CIFAR10/CIFAR100 with PyTorch.'''
 import argparse
 import os
+import csv
 from optimizers import (KFACOptimizer, EKFACOptimizer, KBFGSOptimizer, KBFGSLOptimizer, KBFGSL2LOOPOptimizer, KBFGSLMEOptimizer, NGDOptimizer)
 import torch
 import torch.nn as nn
@@ -110,14 +111,15 @@ nc = {
 }
 num_classes = nc[args.dataset]
 net = get_network(args.network,
-                  depth=args.depth,
+                  #depth=args.depth,
                   num_classes=num_classes,
-                  growthRate=args.growthRate,
-                  compressionRate=args.compressionRate,
-                  widen_factor=args.widen_factor,
-                  dropRate=args.dropRate,
-                  base_width=args.base_width,
-                  cardinality=args.cardinality)
+                  #growthRate=args.growthRate,
+                  #compressionRate=args.compressionRate,
+                  #widen_factor=args.widen_factor,
+                  #dropRate=args.dropRate,
+                  #base_width=args.base_width,
+                  #cardinality=args.cardinality
+                  )
 
 
 
@@ -149,7 +151,8 @@ elif args.dataset == 'mini-imagenet':
 # init dataloader
 trainloader, testloader = get_dataloader(dataset=args.dataset,
                                          train_batch_size=args.batch_size,
-                                         test_batch_size=256)
+                                         test_batch_size=256,
+                                         csv_dir="/content/IMagenet/tiny-imagenet-200/")
 
 # init optimizer and lr scheduler
 optim_name = args.optimizer.lower()
@@ -749,7 +752,7 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    desc = ('[%s][LR=%s] Loss: %.3f | Acc: %.3f%% (%d/%d)'
+    desc = ('[%s][LR=%s] Loss: %.3f | Test Acc: %.3f%% (%d/%d)'
             % (tag,lr_scheduler.get_lr()[0], test_loss/(0+1), 0, correct, total))
 
     prog_bar = tqdm(enumerate(testloader), total=len(testloader), desc=desc, position=0, leave=True)
@@ -764,7 +767,7 @@ def test(epoch):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            desc = ('[%s][LR=%s] Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            desc = ('[%s][LR=%s] Loss: %.3f | Test Acc: %.3f%% (%d/%d)'
                     % (tag, lr_scheduler.get_lr()[0], test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
             prog_bar.set_description(desc, refresh=True)
 
@@ -821,6 +824,7 @@ def optimal_JJT_v2(outputs, targets, batch_size, damping=1.0, alpha=0.95, low_ra
     return update_list, loss
 
 def main():
+    field_names = ['train_acc', 'test_acc', 'train_loss', 'test_loss', 'total_time', 'epoch_time']
     train_acc, train_loss = get_accuracy(trainloader)
     test_acc, test_loss = get_accuracy(testloader)
     TRAIN_INFO['train_acc'].append(float("{:.4f}".format(train_acc)))
@@ -832,27 +836,35 @@ def main():
       TRAIN_INFO['memory'].append(torch.cuda.memory_reserved())
     st_time = time.time()
     for epoch in range(start_epoch, args.epoch):
+        with open('/content/gdrive/MyDrive/TenGrad/TRAIN_INFO'+ str(epoch)+'.csv', 'w') as csvfile:
+          writer = csv.writer(csvfile)
+          writer.writerow(TRAIN_INFO.keys())
+          writer.writerows(zip(*TRAIN_INFO.values()))
+
         ep_st_time = time.time()
+        print("Start training...")
         train_acc, train_loss = train(epoch)
+        print("Stop training...")
         if args.step_info == "false":
             TRAIN_INFO['train_acc'].append(float("{:.4f}".format(train_acc)))
             TRAIN_INFO['train_loss'].append(float("{:.4f}".format(train_loss)))
             TRAIN_INFO['total_time'].append(float("{:.4f}".format(time.time() - st_time)))
             TRAIN_INFO['epoch_time'].append(float("{:.4f}".format(time.time() - ep_st_time)))
-
+        print("Start Testing...")
         test_acc, test_loss = test(epoch)
+        print("Stop testing...")
         if args.step_info == "false":
             TRAIN_INFO['test_loss'].append(float("{:.4f}".format(test_loss)))
             TRAIN_INFO['test_acc'].append(float("{:.4f}".format(test_acc)))
         
         lr_scheduler.step()
-
+        print(TRAIN_INFO)
     if args.step_info == "true":
         a = TRAIN_INFO['total_time']
         a = np.cumsum(a)
         TRAIN_INFO['total_time'] = a
 
-    # print(TRAIN_INFO)
+      
     # save the train info to file:
     fname = "lr_" + str(args.learning_rate) + "_b_" + str(args.batch_size)
     if optim_name in ['kfac', 'skfac', 'ekfac', 'kngd']:
@@ -876,7 +888,7 @@ def main():
         fname = 'super_opt_' + fname
 
     fname = fname + str(np.random.rand()) 
-    path = "./" + args.dataset + "/" + args.network + "/" + args.optimizer
+    path = "/content/gdrive/MyDrive/TenGrad/" + args.dataset + "/" + args.network + "/" + args.optimizer
     if not os.path.exists(path):
         try:
             os.makedirs(path)
