@@ -9,8 +9,14 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import pandas as pd
 import numpy as np
+import json
 import os
 from PIL import Image
+from torchvision.transforms import ToTensor
+from PIL import Image
+from torch.utils.data import Dataset
+from torch.utils.data.dataloader import *
+img_to_tensor = ToTensor()
 
 # fixing HTTPS issue on Colab
 from six.moves import urllib
@@ -56,6 +62,37 @@ class MiniImageNetDataset(Dataset):
             image = self.transform(image)
 
         return image, target
+
+
+class TestingDataset(Dataset):
+  def __init__(self, list='/content/IMagenet/testing_data_list.json'):
+    with open(list, 'r') as f:
+      self.list = json.load(f)
+
+  def __getitem__(self, index):
+    img_dir, label = self.list[index]
+    img = Image.open(img_dir)
+    tensor = img_to_tensor(img)
+    return tensor, label
+
+  def __len__(self):
+    return len(self.list)
+
+
+
+class TrainingDataset(Dataset):
+  def __init__(self, list='/content/IMagenet/training_data_list.json'):
+    with open(list, 'r') as f:
+      self.list = json.load(f)
+
+  def __getitem__(self, index):
+    img_dir, label = self.list[index]
+    img = Image.open(img_dir)
+    tensor = img_to_tensor(img)
+    return tensor, label
+
+  def __len__(self):
+    return len(self.list)
 
 def get_transforms(dataset):
     transform_train = None
@@ -141,9 +178,33 @@ def get_dataloader(dataset, train_batch_size, test_batch_size, num_workers=2, ro
         '''
         train_dir = csv_dir + '/train'
         trainset = datasets.ImageFolder(train_dir, transform=transforms.ToTensor())
-        test_dir = csv_dir + '/val'
+        test_dir = csv_dir + '/val/validation-folders'
         testset = datasets.ImageFolder(test_dir, transform=transforms.ToTensor())
-    
+        '''
+        training_data_list = []
+        class_name = 0
+        targets = {}
+        for folder in os.listdir('/content/IMagenet/tiny-imagenet-200/train/'):
+            label = class_name  # The name of the folder is the label of the images it contains
+            for file in os.listdir('/content/IMagenet/tiny-imagenet-200/train/' + folder + '/images/'):
+                file_dir = '/content/IMagenet/tiny-imagenet-200/train/' + folder + '/images/' + file
+                training_data_list.append((file_dir, label))
+            class_name = class_name + 1
+            targets.update({folder: class_name})
+        with open('./training_data_list.json', 'w') as f:
+            json.dump(training_data_list, f)
+            
+        testing_data_list = []
+        with open('/content/IMagenet/tiny-imagenet-200/val/val_annotations.txt', 'r') as f:
+            for line in f.readlines():
+                file, label = line.split()[0:2]
+                label = targets[label]
+                file_dir = '/content/IMagenet/tiny-imagenet-200/val/images/' + file
+                testing_data_list.append((file_dir, label))
+
+        with open('/content/IMagenet/testing_data_list.json', 'w') as f:
+            json.dump(testing_data_list, f)
+        '''
     if dataset == 'cifar10':
         trainset = torchvision.datasets.CIFAR10(root=root, train=True, download=True, transform=transform_train)
         testset = torchvision.datasets.CIFAR10(root=root, train=False, download=True, transform=transform_test)
